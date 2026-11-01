@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CADMUS VulnBank - network security configuration
+  DELIBERATELY VULNERABLE TRAINING APPLICATION - DO NOT DEPLOY
+
+  Planted defects: M5 (Insecure Communication), M8 (Security Misconfiguration)
+-->
+<network-security-config>
+
+    <!-- PLANTED DEFECT (M5): cleartextTrafficPermitted="true" as the BASE
+         config re-enables plaintext HTTP for every destination the app talks
+         to. Since Android 9 (API 28) the platform default is to forbid this;
+         the developer has explicitly opted back out of a safe default.
+
+         Discussion prompt for N1: why does a safe DEFAULT matter more than a
+         documented best practice? -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+
+            <!-- PLANTED DEFECT (M5): trusting the user certificate store means
+                 any CA the device owner - or malware, or an attacker with MDM
+                 enrolment - installs is accepted. This is precisely the
+                 configuration that makes an interception proxy transparent:
+                 convenient during development, catastrophic in production. -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- PLANTED DEFECT (M5/M8): a debug override left in the shipping config.
+         debug-overrides apply only to debuggable builds, but this project
+         ships debuggable builds (see app/build.gradle), so it applies. -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user" />
+            <certificates src="system" />
+        </trust-anchors>
+    </debug-overrides>
+
+    <!-- PLANTED DEFECT (M5): there is no <pin-set> anywhere in this file. The
+         app performs no certificate or public-key pinning against its own
+         backend, so any trusted CA can impersonate it. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">vulnbank.local</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+
+</network-security-config>

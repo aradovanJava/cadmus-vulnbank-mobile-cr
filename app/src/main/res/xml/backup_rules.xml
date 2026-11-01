@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CADMUS VulnBank - backup rules
+  DELIBERATELY VULNERABLE TRAINING APPLICATION - DO NOT DEPLOY
+
+  PLANTED DEFECT (M9 - Insecure Data Storage / M8 - Security Misconfiguration)
+
+  A full-backup rule set with no exclusions. Everything in the app's private
+  data directory - including session.xml, which holds the plaintext PIN and
+  bearer token - is copied into cloud backup and is recoverable through
+  `adb backup` on a device where the flag is honoured.
+
+  The correct rule set excludes credential and session stores explicitly.
+-->
+<full-backup-content>
+    <include domain="sharedpref" path="." />
+    <include domain="database" path="." />
+    <include domain="file" path="." />
+</full-backup-content>

@@ -1,0 +1,24 @@
+// CADMUS VulnBank - project level build script
+// DELIBERATELY VULNERABLE TRAINING APPLICATION - DO NOT DEPLOY
+
+buildscript {
+    ext {
+        // Pinned deliberately behind current releases so that Software Composition
+        // Analysis (CR3) reports genuine advisories rather than an empty result set.
+        agp_version = '8.1.0'
+        compile_sdk = 34
+        min_sdk = 24
+        target_sdk = 30   // <-- PLANTED DEFECT (M8): targetSdk below 31 opts the app
+                          //     out of several platform-enforced defaults, including
+                          //     mandatory explicit export flags and restricted
+                          //     PendingIntent mutability.
+    }
+}
+
+plugins {
+    id 'com.android.application' version "$agp_version" apply false
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.buildDir
+}

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- CADMUS VulnBank - DELIBERATELY VULNERABLE TRAINING APPLICATION -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center_vertical">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/login_title"
+        android:textSize="24sp"
+        android:paddingBottom="24dp" />
+
+    <EditText
+        android:id="@+id/input_username"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/hint_username"
+        android:inputType="text"
+        android:autofillHints="username" />
+
+    <!-- PLANTED DEFECT (M9): no android:inputType="textPassword" would be one
+         issue; here the field is correct, but note the absence of
+         android:importantForAutofill and of FLAG_SECURE on the window, so the
+         screen contents appear in the OS task-switcher snapshot. -->
+    <EditText
+        android:id="@+id/input_password"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/hint_password"
+        android:inputType="textPassword"
+        android:autofillHints="password" />
+
+    <Button
+        android:id="@+id/button_login"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="@string/action_login" />
+
+</LinearLayout>

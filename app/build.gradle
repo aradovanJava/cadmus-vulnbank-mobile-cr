@@ -1,0 +1,148 @@
+// CADMUS VulnBank - application module
+// DELIBERATELY VULNERABLE TRAINING APPLICATION - DO NOT DEPLOY
+//
+// Planted defects in this file: M2 (Inadequate Supply Chain Security),
+//                               M7 (Insufficient Binary Protections),
+//                               M1 (Improper Credential Usage)
+
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'eu.cadmus.vulnbank'
+    compileSdk rootProject.ext.compile_sdk
+
+    defaultConfig {
+        applicationId "eu.cadmus.vulnbank"
+        minSdk rootProject.ext.min_sdk
+        targetSdk rootProject.ext.target_sdk
+        versionCode 3
+        versionName "1.2.0"
+
+        // --- PLANTED DEFECT (M1 - Improper Credential Usage) -------------------
+        // The integration key is compiled into BuildConfig, which lands in
+        // classes.dex as a plain string constant. `strings app-debug.apk` or a
+        // two-minute jadx session recovers it. BuildConfig fields are NOT a
+        // secret storage mechanism - they are a compile-time convenience.
+        buildConfigField "String", "BACKEND_INTEGRATION_KEY",
+                "\"${project.findProperty('VULNBANK_BACKEND_INTEGRATION_KEY')}\""
+        buildConfigField "String", "TELEMETRY_SHARED_SECRET",
+                "\"tlm_a1b2c3d4e5f60718293a4b5c6d7e8f90\""
+        // ----------------------------------------------------------------------
+    }
+
+    signingConfigs {
+        release {
+            // --- PLANTED DEFECT (M1) -------------------------------------------
+            // Keystore committed to the repository, passwords sourced from a
+            // committed gradle.properties. Compromise of the repository is
+            // compromise of the app signing identity - which is unrecoverable,
+            // because the signing key establishes update authenticity.
+            storeFile file('vulnbank-release.jks')
+            storePassword project.findProperty('VULNBANK_RELEASE_STORE_PASSWORD')
+            keyAlias 'vulnbank'
+            keyPassword project.findProperty('VULNBANK_RELEASE_KEY_PASSWORD')
+            // -------------------------------------------------------------------
+        }
+    }
+
+    buildTypes {
+        debug {
+            // --- PLANTED DEFECT (M7 / M8) --------------------------------------
+            // debuggable=true permits jdb attachment and arbitrary Frida-style
+            // instrumentation without root. Harmless in a debug build; the defect
+            // is that this project ships debug APKs to testers as if they were
+            // release candidates.
+            debuggable true
+            minifyEnabled false
+        }
+        release {
+            // --- PLANTED DEFECT (M7 - Insufficient Binary Protections) ---------
+            // minifyEnabled false ships the release build with full symbol names,
+            // no control-flow obfuscation, and no resource shrinking. Class,
+            // method, and field names survive into the APK, so decompilation
+            // yields near-source-quality Java. There is no root detection, no
+            // integrity self-check, and no anti-instrumentation control.
+            //
+            // Note for discussion (N1): binary protection is a DEFENCE-IN-DEPTH
+            // control, not a substitute for server-side authorisation. Enabling
+            // R8 would NOT fix the authorisation flaws in TransferActivity.
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+            // -------------------------------------------------------------------
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        buildConfig true
+        viewBinding true
+    }
+
+    // --- PLANTED DEFECT (M7) ---------------------------------------------------
+    // Debug symbols retained in the packaged native libraries.
+    packagingOptions {
+        jniLibs {
+            keepDebugSymbols += ['**/*.so']
+        }
+    }
+    // ---------------------------------------------------------------------------
+}
+
+dependencies {
+
+    // =========================================================================
+    // PLANTED DEFECT (M2 - Inadequate Supply Chain Security)
+    //
+    // Every version below is deliberately pinned behind the current release so
+    // that Snyk / OWASP Dependency-Check / SonarQube SCA return genuine, citable
+    // advisories during CR3. Do not "helpfully" upgrade these - the remediation
+    // IS the exercise.
+    //
+    // Instructors: re-verify the advisory status of each entry before every
+    // course delivery. Advisory data ages; a version that was vulnerable when
+    // this file was written may since have been superseded by an even more
+    // interesting finding, and a clean scan makes for a poor lab.
+    // =========================================================================
+
+    implementation 'androidx.appcompat:appcompat:1.3.1'
+    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.0'
+
+    // Known-vulnerable serialisation and HTTP stacks. These are the primary
+    // SCA targets. Check the advisory database for the CVE identifiers rather
+    // than trusting a comment in a source file.
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.8'
+    implementation 'com.squareup.okhttp3:okhttp:3.12.1'
+    implementation 'commons-io:commons-io:2.4'
+    implementation 'org.apache.commons:commons-compress:1.20'
+    implementation 'com.google.code.gson:gson:2.8.5'
+
+    // Logging stack retained from an earlier project generation.
+    implementation 'org.slf4j:slf4j-api:1.7.25'
+
+    // --- PLANTED DEFECT (M2) -------------------------------------------------
+    // A dynamic version range. The artefact resolved at build time is whatever
+    // the repository serves that day, so two builds of the same commit can
+    // contain different code. This defeats reproducible builds and makes the
+    // SBOM unreliable the moment it is generated.
+    implementation 'com.github.bumptech.glide:glide:4.+'
+    // -------------------------------------------------------------------------
+
+    // --- PLANTED DEFECT (M2) -------------------------------------------------
+    // No dependency verification. This project declares no
+    // gradle/verification-metadata.xml, so no checksum or signature is checked
+    // for any of the artefacts above. A compromised mirror or a typosquatted
+    // coordinate is accepted silently.
+    // -------------------------------------------------------------------------
+
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+}

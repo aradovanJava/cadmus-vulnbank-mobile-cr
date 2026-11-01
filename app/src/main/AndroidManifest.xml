@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CADMUS VulnBank - application manifest
+  DELIBERATELY VULNERABLE TRAINING APPLICATION - DO NOT DEPLOY
+
+  This is the highest-value single file in the application for a code reviewer.
+  It is short, it is declarative, and it establishes the app's entire trust
+  boundary with the platform and with other installed apps. In N1 this file is
+  used as the "architectural snippet" for the design-weakness exercise.
+
+  Planted defects: M6 (Inadequate Privacy Controls), M8 (Security
+  Misconfiguration), M9 (Insecure Data Storage)
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- =====================================================================
+         PLANTED DEFECT (M6 - Inadequate Privacy Controls)
+
+         Permission set far exceeding the app's stated function. A retail
+         banking client has no functional need for contacts, precise location,
+         SMS, or the call log. Each of these was added for a "convenience"
+         feature: contacts for payee autocomplete, location for fraud scoring,
+         SMS for OTP autofill, call log for support callback.
+
+         Design question for N1: at what point in the SDLC should each of
+         these have been challenged? Note that no amount of secure CODING
+         fixes an over-broad permission - this is a design-time decision.
+         ===================================================================== -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- PLANTED DEFECT (M9): legacy external storage access. Anything written
+         to shared storage is world-readable to any app holding READ_EXTERNAL_
+         STORAGE, and survives uninstallation of this app. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <application
+        android:name=".insecure.VulnBankApplication"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Material3.DayNight.NoActionBar"
+        android:supportsRtl="true"
+
+        android:networkSecurityConfig="@xml/network_security_config"
+
+        android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/backup_rules"
+
+        android:debuggable="true"
+
+        android:usesCleartextTraffic="true">
+
+        <!-- ==================================================================
+             PLANTED DEFECT (M8) - the four attributes above.
+
+             allowBackup="true"      : session store extractable via adb backup
+             debuggable="true"       : hardcoded in the manifest, so it survives
+                                       even a release build; permits runtime
+                                       instrumentation without root
+             usesCleartextTraffic    : redundant with the network config, but
+                                       reviewers often fix one and miss the other
+             dataExtractionRules     : points at the same permissive rule set
+
+             Reviewer heuristic worth teaching: read the <application> tag's
+             attributes BEFORE reading any Java. Four attributes here reveal
+             more about the app's security posture than a thousand lines of
+             business logic.
+             ================================================================== -->
+
+        <activity
+            android:name=".insecure.LoginActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ==================================================================
+             PLANTED DEFECT (M8 + M3 - Insecure Authentication/Authorization)
+
+             TransferActivity is exported. Any application installed on the
+             device can start it directly with a crafted Intent, bypassing
+             LoginActivity entirely. The activity itself trusts the Intent
+             extras it receives (see TransferActivity.java).
+
+             This is the single most important defect for the N1 discussion,
+             because it is invisible in the Java source. A reviewer reading
+             only TransferActivity.java sees code that looks defensible. The
+             vulnerability exists in the RELATIONSHIP between two files - a
+             design flaw, not an implementation flaw.
+             ================================================================== -->
+        <activity
+            android:name=".insecure.TransferActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="eu.cadmus.vulnbank.ACTION_TRANSFER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- PLANTED DEFECT (M4 + M8): a deep-link handler with a broad host
+             pattern feeding straight into a WebView. Note the missing
+             android:autoVerify and the wildcard-ish host. -->
+        <activity
+            android:name=".insecure.SupportWebViewActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="vulnbank" />
+                <data android:scheme="https" android:host="support.vulnbank.local" />
+            </intent-filter>
+        </activity>
+
+        <!-- PLANTED DEFECT (M8): a content provider exported by default with
+             no read or write permission and grantUriPermissions enabled.
+             Any app on the device can query the account database through it. -->
+        <provider
+            android:name=".insecure.AccountContentProvider"
+            android:authorities="eu.cadmus.vulnbank.accounts"
+            android:exported="true"
+            android:grantUriPermissions="true" />
+
+        <!-- PLANTED DEFECT (M8): an unprotected exported receiver. It accepts
+             a broadcast that triggers a session reset, so any app can force
+             a state change in VulnBank. -->
+        <receiver
+            android:name=".insecure.SessionResetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="eu.cadmus.vulnbank.RESET_SESSION" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+</manifest>

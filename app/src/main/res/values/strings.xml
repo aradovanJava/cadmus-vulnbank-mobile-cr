@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CADMUS VulnBank - string resources
+  DELIBERATELY VULNERABLE TRAINING APPLICATION - DO NOT DEPLOY
+-->
+<resources>
+    <string name="app_name">VulnBank</string>
+    <string name="login_title">Sign in to VulnBank</string>
+    <string name="hint_username">Username</string>
+    <string name="hint_password">Password</string>
+    <string name="action_login">Sign in</string>
+    <string name="action_transfer">Transfer funds</string>
+    <string name="action_support">Contact support</string>
+
+    <!-- ================================================================
+         PLANTED DEFECT (M1 - Improper Credential Usage)
+
+         Secrets placed in res/values/strings.xml. These are stored in
+         resources.arsc in the APK as plain UTF-8. Extraction requires no
+         decompilation at all - `unzip` plus `aapt2 dump strings` is enough.
+
+         This pattern appears constantly in real codebases because
+         strings.xml FEELS like configuration rather than code.
+         ================================================================ -->
+    <string name="payment_gateway_api_key">pk_live_51MzQ8xKvT2nLpR7wYbG3</string>
+    <string name="payment_gateway_secret">sk_live_9dK4mN2pQ8rT6vX1zA5cE7gJ</string>
+    <string name="firebase_database_url">https://vulnbank-prod.firebaseio.com</string>
+    <string name="support_portal_basic_auth">c3VwcG9ydDpTdXBwMHJ0MjAyNCE=</string>
+    <!-- ================================================================ -->
+
+    <string name="msg_login_failed">Invalid username or password</string>
+    <string name="msg_transfer_ok">Transfer submitted</string>
+</resources>
