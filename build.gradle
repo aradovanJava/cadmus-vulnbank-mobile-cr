@@ -29,6 +29,12 @@ plugins {
     id 'com.autonomousapps.dependency-analysis' version '2.17.0'
 }
 
+// CycloneDX (and every SBOM) needs a coordinate for the project itself.
+allprojects {
+    group = 'eu.cadmus.vulnbank'
+    version = '1.2.0'
+}
+
 tasks.register('clean', Delete) {
     delete rootProject.buildDir
 }
