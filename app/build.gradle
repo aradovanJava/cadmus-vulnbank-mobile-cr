@@ -10,6 +10,9 @@ plugins {
     // CR-16 sandbox build: OWASP Dependency-Check, called by CR3 D1 as
     // './gradlew dependencyCheckAnalyze' (configured at the end of this file).
     id 'org.owasp.dependencycheck' version '12.2.2'
+    // Dependency Analysis 2.x analyses only the modules it is applied to
+    // (version from the root build); ./gradlew analyzeDependencies reports it.
+    id 'com.autonomousapps.dependency-analysis'
 }
 
 android {
