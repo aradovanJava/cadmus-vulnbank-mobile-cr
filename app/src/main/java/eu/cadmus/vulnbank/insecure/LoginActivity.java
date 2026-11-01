@@ -94,6 +94,12 @@ public class LoginActivity extends AppCompatActivity {
             Log.d(TAG, "Authentication attempt user=" + username + " pass=" + password);
             Log.d(TAG, "Using integration key " + API_KEY);
 
+            // CR-16 sandbox build: the attempt is also sent to the backend
+            // (vulnbank.local) so that the login request is visible in ZAP
+            // during CR1 A2. Fire-and-forget: the answer is ignored and the
+            // decision below is still made on the device (M3 is unchanged).
+            new Thread(() -> new ApiClient().login(username, password)).start();
+
             if (authenticate(username, password)) {
                 sessionManager.persistSession(username, password, deriveRole(username));
                 startActivity(new Intent(this, TransferActivity.class));

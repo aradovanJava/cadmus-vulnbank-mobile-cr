@@ -7,6 +7,9 @@
 
 plugins {
     id 'com.android.application'
+    // CR-16 sandbox build: OWASP Dependency-Check, called by CR3 D1 as
+    // './gradlew dependencyCheckAnalyze' (configured at the end of this file).
+    id 'org.owasp.dependencycheck' version '12.2.2'
 }
 
 android {
@@ -94,6 +97,30 @@ android {
         }
     }
     // ---------------------------------------------------------------------------
+
+    // --- CR-16 sandbox build -----------------------------------------------------
+    // assembleRelease runs lint's "vital" checks, which stop the build on the
+    // planted defects themselves (debuggable="true" hardcoded in the manifest,
+    // targetSdk 30). The defects are the subject of the course, so lint must not
+    // veto the build: it still runs with ./gradlew lint, it just does not gate
+    // assembleRelease.
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    // The Robolectric smoke tests in src/test need the merged Android resources.
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+    // ---------------------------------------------------------------------------
+}
+
+// SonarQube analyses the variant that is shipped (CR1 A3).
+sonar {
+    androidVariant = 'release'
 }
 
 dependencies {
@@ -145,4 +172,38 @@ dependencies {
 
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+
+    // --- CR-16 sandbox build -----------------------------------------------------
+    // Functional smoke tests (src/test) for the CR3 D2 gate "the functional test
+    // suite passes": every screen must still inflate and start after a
+    // dependency is updated, replaced or removed. Test-only; not shipped.
+    testImplementation 'org.robolectric:robolectric:4.13'
+    testImplementation 'androidx.test:core:1.5.0'
+    testImplementation 'androidx.test.ext:junit:1.1.5'
+}
+
+// --- OWASP Dependency-Check (CR3 D1) -------------------------------------------
+// Scans exactly what ships (releaseRuntimeClasspath) and writes
+// app/build/reports/dependency-check-report.json and .html.
+// The NVD data is downloaded on first use and cached in ~/.gradle; the sandbox
+// pre-loads it. An NVD API key is optional (much faster first download):
+//   export NVD_API_KEY=...   or   ./gradlew dependencyCheckAnalyze -PnvdApiKey=...
+dependencyCheck {
+    formats = ['JSON', 'HTML']
+    scanConfigurations = ['releaseRuntimeClasspath']
+    analyzers {
+        assemblyEnabled = false
+        ossIndex {
+            enabled = false      // needs an OSS Index account since 2025
+        }
+        retirejs {
+            enabled = false      // JavaScript only; nothing to find here
+        }
+    }
+    def nvdKey = System.getenv('NVD_API_KEY') ?: project.findProperty('nvdApiKey')
+    if (nvdKey) {
+        nvd {
+            apiKey = nvdKey
+        }
+    }
 }

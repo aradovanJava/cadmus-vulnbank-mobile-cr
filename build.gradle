@@ -15,10 +15,63 @@ buildscript {
     }
 }
 
+// CR-16 sandbox build: a plugins {} block accepts only literal versions, so the
+// AGP version is written out here (keep it equal to agp_version above).
+// The analysis plugins are the ones the CR1-CR4 guides call:
+//   ./gradlew sonar                  CR1 A3, CR4 E1   (SonarScanner for Gradle)
+//   ./gradlew cyclonedxBom           CR3 D3           (SBOM -> build/reports/bom.json)
+//   ./gradlew analyzeDependencies    CR3 D1           (declared but unused dependencies)
+//   ./gradlew dependencyCheckAnalyze CR3 D1           (applied in app/build.gradle)
 plugins {
-    id 'com.android.application' version "$agp_version" apply false
+    id 'com.android.application' version '8.1.0' apply false
+    id 'org.sonarqube' version '5.1.0.4882'
+    id 'org.cyclonedx.bom' version '1.10.0'
+    id 'com.autonomousapps.dependency-analysis' version '2.17.0'
 }
 
 tasks.register('clean', Delete) {
     delete rootProject.buildDir
+}
+
+// --- SonarQube (CR1 A3) ------------------------------------------------------
+// Defaults only; the command line in the guides (-Dsonar.projectKey,
+// -Dsonar.host.url, -Dsonar.token) overrides them.
+sonar {
+    properties {
+        property 'sonar.projectKey', 'cadmus-vulnbank'
+        property 'sonar.projectName', 'CADMUS VulnBank'
+        property 'sonar.host.url', 'http://sonarqube.sandbox.local:9000'
+    }
+}
+
+// --- CycloneDX SBOM (CR3 D3) -------------------------------------------------
+// Inventory of what ships: the release runtime classpath, the same configuration
+// the CR3 guide inspects with ':app:dependencies'. Written to build/reports/bom.json.
+cyclonedxBom {
+    includeConfigs = ['releaseRuntimeClasspath']
+    projectType = 'application'
+    schemaVersion = '1.5'
+    destination = file('build/reports')
+    outputName = 'bom'
+    outputFormat = 'all'
+    includeLicenseText = false
+}
+
+// --- Unused dependencies (CR3 D1) --------------------------------------------
+// The CR3 guide runs './gradlew analyzeDependencies'. It is the Dependency
+// Analysis Gradle Plugin's build health report under the name the guide uses.
+tasks.register('analyzeDependencies') {
+    group = 'verification'
+    description = 'Reports declared dependencies that no code or resource uses (Dependency Analysis plugin).'
+    dependsOn 'buildHealth'
+    doLast {
+        def report = file('build/reports/dependency-analysis/build-health-report.txt')
+        if (report.exists()) {
+            println ''
+            println '== Dependency analysis (build/reports/dependency-analysis/build-health-report.txt) =='
+            println report.text
+        } else {
+            println 'No build-health report found - see the buildHealth output above.'
+        }
+    }
 }

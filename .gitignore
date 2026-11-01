@@ -1,0 +1,13 @@
+# CR-16 sandbox build: keep build output and machine-local files out of the
+# trainees' commits. gradle.properties stays committed on purpose (planted M1
+# defect), and so does app/vulnbank-release.jks.
+.gradle/
+build/
+app/build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/

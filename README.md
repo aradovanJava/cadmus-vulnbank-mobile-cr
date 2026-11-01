@@ -24,6 +24,40 @@ that participants can read the entire codebase within a single training session.
 
 ---
 
+## CR-16 Cyber Range build — what differs from the LMS ZIP
+
+This repository is the participant distribution of the LMS course (resource
+*CADMUS-CR-16_VulnBank_Mobile.zip*; the first commit is byte-identical to it).
+The second commit makes the project build and makes the commands in the CR1–CR4
+guides work in the CADMUS Cyber Range sandbox. **None of these changes removes or
+fixes a planted defect.**
+
+| # | Change | Why |
+|---|---|---|
+| 1 | Manifest theme `Theme.Material3.DayNight.NoActionBar` → `Theme.MaterialComponents.DayNight.NoActionBar` | Material 1.4.0 (pinned for CR3) has no Material3 themes; resource linking failed. |
+| 2 | `app/vulnbank-release.jks` added (JKS, alias `vulnbank`, the passwords already in `gradle.properties`) | `signingConfigs.release` points at it; `assembleRelease` failed without it. Committing it *is* the planted M1 defect. Fabricated key, training only. |
+| 3 | `lint { checkReleaseBuilds false; abortOnError false }` | Lint's release checks stop `assembleRelease` on the planted defects themselves (hardcoded `debuggable`, targetSdk 30). Lint still runs with `./gradlew lint`. |
+| 4 | Gradle wrapper 8.7 (`gradlew`, `gradle/wrapper/`); literal AGP version in the root `plugins {}` block | The guides call `./gradlew`; a `plugins {}` block accepts only literal versions. |
+| 5 | Root plugins `org.sonarqube` 5.1.0.4882, `org.cyclonedx.bom` 1.10.0, `com.autonomousapps.dependency-analysis` 2.17.0; app plugin `org.owasp.dependencycheck` 12.2.2 | `./gradlew sonar` (CR1 A3, CR4 E1), `./gradlew cyclonedxBom` → `build/reports/bom.json` (CR3 D3), `./gradlew dependencyCheckAnalyze` → `app/build/reports/dependency-check-report.json` (CR3 D1; scans `releaseRuntimeClasspath`, OSS Index off, NVD API key optional via `NVD_API_KEY`). |
+| 6 | Task `analyzeDependencies` (root) | CR3 D1 runs it but the course named no plugin. It runs the Dependency Analysis plugin's `buildHealth` and prints the advice: declared-but-unused dependencies and used-but-undeclared ones. |
+| 7 | `LoginActivity` also sends the login to the backend (fire-and-forget, answer ignored) | So the login request appears in ZAP in CR1 A2. The decision is still taken on the device; M3 is unchanged. |
+| 8 | Robolectric smoke tests `app/src/test/.../ScreenSmokeTest.java` (+ test-only dependencies, `includeAndroidResources`) | The CR3 D2 gate runs `./gradlew test`; without tests it checked nothing. The tests start every screen, so a dependency change that breaks the app at run time fails the gate. Keep them passing on your branches. |
+| 9 | `android.suppressUnsupportedCompileSdk=34` in `gradle.properties`; `.gitignore` | Silences the AGP 8.1 / compileSdk 34 warning; keeps `build/` and `local.properties` out of commits (`gradle.properties` stays committed on purpose). |
+
+In the sandbox the project is at `~/vulnbank` on MOB1, the built APK at
+`/opt/cadmus/vulnbank/app-release.apk`, and the mock backend
+([cadmus-cr-16-vulnbank-backend](https://github.com/aradovanJava/cadmus-cr-16-vulnbank-backend))
+answers as `vulnbank.local` / `support.vulnbank.local`.
+
+```bash
+./gradlew assembleRelease            # app/build/outputs/apk/release/app-release.apk
+./gradlew test                       # smoke tests (CR3 D2 gate)
+./gradlew sonar -Dsonar.token=$SONAR_TOKEN
+./gradlew dependencyCheckAnalyze analyzeDependencies cyclonedxBom
+```
+
+---
+
 ## Purpose
 
 VulnBank provides one realistic, self-consistent codebase that carries at least one defect
@@ -88,7 +122,8 @@ excluded from the participant distribution — see "Preparing the participant bu
 
 - Android Studio Ladybug (2024.2) or newer
 - JDK 17
-- Android SDK Platform 34, Build Tools 34.0.0
+- Android SDK Platform 34, Build Tools 34.0.0 (AGP 8.1.0 also uses Build Tools 33.0.1)
+- Internet access for Gradle (Google Maven, Maven Central, Gradle Plugin Portal)
 - An emulator image (API 30–34) or an isolated physical test device
 
 **Steps**
